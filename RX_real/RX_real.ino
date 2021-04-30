@@ -2,6 +2,9 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifndef PSTR
  #define PSTR // Make Arduino Due happy
 #endif
@@ -27,7 +30,8 @@
 #define RF95_FREQ 915.0
 
 // unique id for this sign
-char* myId = "01";
+int myId = 1;
+char* myIdString = "1";
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
@@ -49,10 +53,10 @@ void start_radio()
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
 
-  while (!Serial) {
-    delay(1);
-  }
-  
+//  while (!Serial) {
+//    delay(1);
+//  }
+//  
   delay(100);
 
   // manual reset
@@ -66,7 +70,7 @@ void start_radio()
     Serial.println("Uncomment '#define SERIAL_DEBUG' in RH_RF95.cpp for detailed debug info");
     while (1);
   }
-  Serial.println("LoRa radio init OK!");
+  //Serial.println("LoRa radio init OK!");
 
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
   if (!rf95.setFrequency(RF95_FREQ)) {
@@ -77,12 +81,11 @@ void start_radio()
   rf95.setTxPower(23, false);
 }
 
-
 void start_matrix()
 {
   matrix.begin();
   matrix.setTextWrap(false);
-  matrix.setBrightness(20);
+  matrix.setBrightness(100);
   matrix.setTextColor(colors[0]);
   matrix.fillScreen(0);
   matrix.show();
@@ -92,43 +95,49 @@ void setup()
 {
   start_radio();
   start_matrix();
-  Serial.begin(115200);
+  //Serial.begin(115200);
 }
 
 
 struct radio_packet {
-  char* id;
-  int color;
-  int speed_limit;
+  int id = 0;
+  int color = 0;
+  int speed_limit = 0;
 };
 
 
 struct radio_packet parse_message(char* recieved) {
   // format for update string: 123456 01_0_25
   struct radio_packet packet;
-  
-  Serial.print("Whole packet: ");
-  Serial.println(recieved);
 
-  char *ptr = strtok(recieved, " "); 
-  packet.id = ptr;
+  char *token, *subtoken, *saveptr1, *saveptr2;
+
+  token = strtok_r(recieved, " ", &saveptr1); 
+  packet.id = atoi(token);
   
-  ptr = strtok(NULL, " ");
-  while(ptr != NULL)
+  token = strtok_r(NULL, " ", &saveptr1);
+
+  while(token != NULL)
   {
-    
-    //cur_inst will be in format: 01_0_25
-    char *com_tok = strtok(ptr, "_");
-    if (strcmp(com_tok, myId)) {
-      packet.color = atoi(strtok(NULL, "_"));
-      packet.speed_limit = atoi(strtok(NULL, "_"));
-      Serial.print("Color: ");
-      Serial.println(packet.color);
-      Serial.print("Speed Limit: ");
-      Serial.println(packet.speed_limit);
+//    Serial.print("Token: ");
+//    Serial.println(token);
+    subtoken = strtok_r(token, "_", &saveptr2);
+    if (atoi(subtoken) == myId) {
+      char* col = strtok_r(NULL, "_", &saveptr2);
+      packet.color = atoi(col);
+//      Serial.print("Color: ");
+//      Serial.println(col);
+      
+      char* speedLim = strtok_r(NULL, "_", &saveptr2);
+//      Serial.print("SpeedLim: ");
+//      Serial.println(speedLim);
+//      Serial.println();
+      packet.speed_limit = atoi(speedLim);
+      return packet;
+      
     }
     
-    ptr = strtok(NULL, " ");
+    token = strtok_r(NULL, " ", &saveptr1);
   }
   
 
@@ -138,9 +147,16 @@ struct radio_packet parse_message(char* recieved) {
 void updateSign(int color, int speed_limit) {
 
   matrix.setTextColor(colors[color]);
-  
+//  Serial.print("speed limit: ");
+//  Serial.println(speed_limit);
   if (speed_limit != 0) {
-    matrix.print("" + speed_limit);
+    matrix.fillScreen(0);
+    matrix.setCursor(2, 1);
+    char speedLimString[3];
+    itoa(speed_limit, speedLimString, 10);
+    matrix.print(speedLimString[0]);
+    matrix.setCursor(9, 1);
+    matrix.print(speedLimString[1]);
   } else {
     matrix.fillScreen(colors[color]);
   }
@@ -148,28 +164,26 @@ void updateSign(int color, int speed_limit) {
   matrix.show();
 }
 
+
 void loop()
 {
-  char* recieved = "";
+
   if (rf95.available())
   {
-    // Should be a message for us now
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
 
     if (rf95.recv(buf, &len))
     {
       digitalWrite(LED, HIGH);
-      recieved = (char*)buf;
-      Serial.println(recieved);
-      struct radio_packet packet = parse_message(recieved);
+      struct radio_packet packet = parse_message((char*)buf);
       
       updateSign(packet.color, packet.speed_limit);
- 
-      //Serial.println(rf95.lastRssi(), DEC);
-     
-//      uint8_t data[27] = {strcat(strcat(myId, " has received "), packet.id)};
-//      rf95.send(data, sizeof(data));
+      
+////      char packetID[7];
+////      itoa(packet.id, packetID, 10); 
+//      char* respond = "Sign 1 has recieved ok";
+//      rf95.send((uint8_t *)respond, strlen(respond) + 1);
 //      delay(100);
 //      rf95.waitPacketSent();
       

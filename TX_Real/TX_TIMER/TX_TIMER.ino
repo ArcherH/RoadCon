@@ -69,7 +69,7 @@
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
-char* readString = "123456 01_0_25";
+
 
 void setup() 
 {
@@ -112,7 +112,7 @@ void setup()
   rf95.setTxPower(23, false);
 }
 
-int16_t packetnum = 0;  // packet counter, we increment per xmission
+char* readString = "123456 01_0_20 02_1_25";
 
 void loop()
 {
@@ -120,7 +120,7 @@ void loop()
   Serial.print("Sending "); 
   Serial.println(readString);
   delay(10);
-  rf95.send((uint8_t *)readString, strlen(readString));
+  rf95.send((uint8_t *)readString, strlen(readString) + 1);
 
   delay(100);
   rf95.waitPacketSent();
@@ -148,6 +148,6 @@ void loop()
   {
     Serial.println("No reply, is there a listener around?");
   }
-  delay(2000); // Wait 1 second between transmits, could also 'sleep' here!
+  delay(10000); // Wait 1 second between transmits, could also 'sleep' here!
   
 }

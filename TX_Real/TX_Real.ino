@@ -129,7 +129,7 @@ void loop()
       delay(2);  //slow looping to allow buffer to fill with next character
      }
 
-    char radiopacket[readString.length() + 1];
+    char radiopacket[readString.length()];
     readString.toCharArray(radiopacket, readString.length());
 
     // itoa(packetnum++, radiopacket+13, 10);
@@ -137,7 +137,7 @@ void loop()
     Serial.print("Sending "); 
     Serial.println(radiopacket);
     delay(10);
-    rf95.send((uint8_t *)radiopacket, readString.length());
+    rf95.send((uint8_t *)radiopacket, readString.length() + 1);
   
     delay(10);
     rf95.waitPacketSent();
